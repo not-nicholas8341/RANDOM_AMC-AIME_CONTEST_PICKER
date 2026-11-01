@@ -110,6 +110,18 @@
   .chip:hover { border-color:var(--muted); }
   .chip:hover span { color:var(--text); }
   .empty { margin:16px 0 0; color:var(--muted); font-size:.85rem; line-height:1.5; }
+  details { margin-top:18px; padding-top:14px; border-top:1px solid var(--line); }
+  summary { display:flex; justify-content:space-between; align-items:center; cursor:pointer; list-style:none;
+            font-size:.92rem; font-weight:500; }
+  summary::-webkit-details-marker { display:none; }
+  summary::after { content:"+"; color:var(--muted); font-size:1.2rem; line-height:1; }
+  details[open] summary::after { content:"−"; }
+  .hint { margin:4px 0 12px; color:var(--muted); font-size:.8rem; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(70px,1fr)); gap:6px; }
+  .pill { padding:8px 0; border-radius:8px; border:1px solid var(--line); background:var(--surface);
+          font-size:.8rem; cursor:pointer; transition:background .15s,border-color .15s,color .15s; }
+  .pill:hover { border-color:var(--muted); }
+  .pill[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:#fff; }
   .linkbtn { background:none; border:0; padding:0; margin-top:14px; color:var(--muted); font-size:.8rem; text-decoration:underline; cursor:pointer; }
   .linkbtn:hover { color:var(--text); }
 
@@ -167,7 +179,12 @@
     <div class="prog-head"><b id="progNum"></b><span id="progPct"></span></div>
     <div class="bar"><i id="progBar"></i></div>
     <div class="chips" id="chips"></div>
-    <p class="empty" id="progEmpty">After you take an exam, press <b>Mark as completed</b> on its result. It'll show up here, and you can skip it on future spins.</p>
+    <p class="empty" id="progEmpty">Nothing yet. Press <b>Mark as completed</b> after a spin, or add exams you've already taken below.</p>
+    <details>
+      <summary>Add exams you've already taken</summary>
+      <p class="hint">Tap an exam to mark it completed. Tap again to undo.</p>
+      <div class="grid" id="grid"></div>
+    </details>
     <button class="linkbtn" id="clearAll">Clear all</button>
   </section>
 
@@ -406,6 +423,8 @@ function renderProgress() {
   $("clearAll").hidden = list.length === 0;
   $("chips").innerHTML = list.map(e =>
     `<button class="chip" data-exam="${e}" title="Remove from completed">${e} <span aria-hidden="true">×</span></button>`).join("");
+  $("grid").innerHTML = all.map(e =>
+    `<button class="pill" data-exam="${e}" aria-pressed="${done.has(key(contest, e))}">${e}</button>`).join("");
   $("progress").hidden = false;
 }
 
@@ -455,9 +474,13 @@ knownEl.onchange = () => { prefs.known = knownEl.checked; store.set("prefs", pre
 skipEl.onchange = () => { prefs.skipDone = skipEl.checked; store.set("prefs", prefs); refresh(); };
 
 // Completed list
-$("chips").onclick = e => {
-  const chip = e.target.closest(".chip");
-  if (chip && !spinning) setDone(chip.dataset.exam, false);
+// Chips (×) and the "already taken" grid both toggle, then update the wheel
+for (const id of ["chips", "grid"]) $(id).onclick = e => {
+  const b = e.target.closest("[data-exam]");
+  if (!b || spinning) return;
+  const exam = b.dataset.exam;
+  setDone(exam, !done.has(key(contest, exam)));
+  refresh();
 };
 $("clearAll").onclick = () => {
   if (!confirm(`Clear all completed ${contest} exams?`)) return;
