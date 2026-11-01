@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AMC Roulette</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#fafafa; --surface:#ffffff; --text:#09090b; --muted:#71717a; --line:#e4e4e7;
+    --slice-a:#f4f4f5; --slice-b:#e9e9ec; --label:#52525b; --accent:#09090b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#09090b; --surface:#111113; --text:#fafafa; --muted:#a1a1aa; --line:#27272a;
+      --slice-a:#141416; --slice-b:#1c1c1f; --label:#a1a1aa; --accent:#fafafa;
+    }
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; min-height:100vh; background:var(--bg); color:var(--text);
+    font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-feature-settings:"tnum","cv11"; -webkit-font-smoothing:antialiased;
+    display:flex; justify-content:center; padding:56px 16px 64px;
+  }
+  main { width:min(520px,100%); display:flex; flex-direction:column; gap:28px; }
+
+  header h1 { margin:0; font-size:1.5rem; font-weight:600; letter-spacing:-.02em; }
+  header p { margin:6px 0 0; color:var(--muted); font-size:.95rem; }
+
+  .seg { display:grid; grid-template-columns:repeat(4,1fr); padding:4px; gap:4px;
+         background:var(--surface); border:1px solid var(--line); border-radius:12px; }
+  .seg button { font:inherit; font-size:.9rem; font-weight:500; padding:10px 0; border:0; border-radius:8px;
+                background:transparent; color:var(--muted); cursor:pointer; transition:background .2s,color .2s; }
+  .seg button:hover:not(:disabled) { color:var(--text); }
+  .seg button[aria-pressed="true"] { background:var(--text); color:var(--bg); }
+  .seg button:disabled { cursor:not-allowed; }
+  .seg button:focus-visible, #hub:focus-visible, #sound:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  .stage { display:flex; flex-direction:column; align-items:center; gap:20px; }
+  #ticker { font-size:2.25rem; font-weight:600; letter-spacing:-.03em; height:2.75rem; line-height:2.75rem; }
+  #ticker.idle { color:var(--muted); font-size:1rem; font-weight:500; letter-spacing:0; }
+
+  .wheel { position:relative; width:100%; aspect-ratio:1; }
+  #wheel { width:100%; height:100%; display:block; }
+  .pointer { position:absolute; top:-6px; left:50%; translate:-50% 0; width:14px; height:18px;
+             background:var(--accent); clip-path:polygon(0 0,100% 0,50% 100%); transition:background .3s; }
+  #hub { position:absolute; inset:50% auto auto 50%; translate:-50% -50%; width:22%; aspect-ratio:1;
+         border-radius:50%; border:1px solid var(--line); background:var(--surface); color:var(--text);
+         font:inherit; font-size:.95rem; font-weight:600; cursor:pointer;
+         box-shadow:0 1px 2px rgba(0,0,0,.06),0 8px 24px rgba(0,0,0,.08); transition:transform .2s; }
+  #hub:hover:not(:disabled) { transform:scale(1.04); }
+  #hub:disabled { color:var(--muted); cursor:not-allowed; }
+
+  #result { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:24px;
+            animation:in .4s cubic-bezier(.2,.8,.2,1); }
+  #result .eyebrow { margin:0; color:var(--muted); font-size:.8rem; font-weight:500; text-transform:uppercase; letter-spacing:.06em; }
+  #result h2 { margin:4px 0 18px; font-size:1.75rem; font-weight:600; letter-spacing:-.02em; }
+  .row { display:flex; justify-content:space-between; align-items:baseline; gap:16px; padding:12px 0; border-top:1px solid var(--line); }
+  .row span { color:var(--muted); font-size:.9rem; }
+  .row b { font-size:1.25rem; font-weight:600; }
+  .note { margin:14px 0 0; color:var(--muted); font-size:.85rem; line-height:1.5; }
+  #result a { display:inline-flex; gap:6px; margin-top:18px; color:var(--text); font-size:.9rem; font-weight:500;
+              text-decoration:none; border-bottom:1px solid var(--line); padding-bottom:2px; }
+  #result a:hover { border-color:var(--text); }
+  @keyframes in { from { opacity:0; transform:translateY(8px); } }
+
+  footer { display:flex; justify-content:space-between; align-items:center; gap:12px; color:var(--muted); font-size:.75rem; line-height:1.5; }
+  footer a { color:inherit; }
+  #sound { flex:none; font:inherit; font-size:.75rem; color:var(--muted); background:none; border:1px solid var(--line);
+           border-radius:999px; padding:6px 12px; cursor:pointer; }
+  @media (prefers-reduced-motion:reduce) { #result { animation:none; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>AMC Roulette</h1>
+    <p>Spin for a random past exam and its cutoff.</p>
+  </header>
+
+  <div class="seg" id="contests" role="group" aria-label="Contest"></div>
+
+  <div class="stage">
+    <div id="ticker" class="idle" aria-live="polite">Choose a contest</div>
+    <div class="wheel">
+      <div class="pointer"></div>
+      <canvas id="wheel"></canvas>
+      <button id="hub" disabled>Spin</button>
+    </div>
+  </div>
+
+  <section id="result" hidden></section>
+
+  <footer>
+    <span>Cutoffs from <a href="https://ivyleaguecenter.org/2016/01/23/1487/">Ivy League Center</a>,
+      <a href="https://momentumlearning.org/amc-cutoff-scores/">Momentum Learning</a>,
+      <a href="https://areteem.org/blog/amc-8-awards-and-cutoffs/">Areteem</a>. Official: MAA.</span>
+    <button id="sound" aria-pressed="true">Sound on</button>
+  </footer>
+</main>
+
+<script>
+// ===== Exams =====
+const range = (hi, lo) => Array.from({ length: hi - lo + 1 }, (_, i) => String(hi - i));
+const pairs = (hi, lo, s) => range(hi, lo).flatMap(y => s.map(x => `${y} ${x}`));
+const EXAMS = {
+  "AMC 8":  range(2026, 1985).filter(y => y !== "2021"),
+  "AMC 10": [...pairs(2025, 2002, ["A", "B"]), "2021 C", "2021 D", "2001", "2000"],
+  "AMC 12": [...pairs(2025, 2002, ["A", "B"]), "2021 C", "2021 D", "2001", "2000", ...range(1999, 1950)],
+  "AIME":   [...pairs(2026, 2000, ["I", "II"]), ...range(1999, 1983)],
+};
+const ACCENT = { "AMC 8":"#10b981", "AMC 10":"#3b82f6", "AMC 12":"#a855f7", "AIME":"#f59e0b" };
+
+// ===== Cutoffs =====
+// AIME qualifying score on the AMC 10/12 (out of 150): [10A, 10B, 12A, 12B]
+const AMC_AIME = {
+  2025:[105,96,99,100.5],   2024:[94.5,105,76.5,88.5], 2023:[103.5,105,85.5,88.5], 2022:[93,94.5,85.5,81],
+  2021:[103.5,102,93,91.5], 2020:[103.5,102,87,87],    2019:[103.5,108,84,94.5],   2018:[111,108,93,99],
+  2017:[112.5,120,96,100.5],2016:[110,110,92,100],     2015:[106.5,120,99,100],    2014:[120,120,93,100],
+  2013:[108,120,88.5,93],   2012:[115.5,120,94.5,99],  2011:[117,117,93,97.5],     2010:[118.5,118.5,88.5,88.5],
+  2009:[120,120,97.5,100],  2008:[117,120,97.5,97.5],  2007:[117,115.5,97.5,100],  2006:[120,120,100,100],
+  2005:[120,120,100,100],   2004:[110,120,100,100],    2003:[119,121,100,100],     2002:[115,118,100,100],
+};
+const AMC_AIME_EXTRA = { // Fall 2021 (C/D) and single-exam years
+  "AMC 10": { "2021 C":96, "2021 D":96, "2001":116, "2000":110 },
+  "AMC 12": { "2021 C":91.5, "2021 D":84, "2001":84, "2000":92 },
+};
+// USA(J)MO index cutoffs (index = AMC score + 10 × AIME score)
+const AIME_SPLIT = { // [USAJMO via 10A, via 10B, USAMO via 12A, via 12B]
+  "2025 I":[233,243,237,249.5],   "2025 II":[233.5,241,242,251.5],
+  "2024 I":[236,232,245,248],     "2024 II":[230,220,220,228],
+  "2023 I":[194,190.5,223,227],   "2023 II":[188,180,214.5,226],
+  "2022 I":[203.5,190.5,222,227.5],"2022 II":[196.5,182,208.5,203],
+  "2021 I":[217,213,229.5,231.5], "2021 II":[223,214.5,238,238],
+  "2020 I":[229.5,230,233.5,235], "2020 II":[233.5,229.5,234,234.5],
+  "2019 I":[209.5,216,220,230.5], "2019 II":[216.5,220.5,230.5,236],
+  "2018 I":[222,212,215,235],     "2018 II":[222,212,216,230.5],
+  "2017 I":[224.5,233,221,230.5], "2017 II":[219,225,225,235],
+};
+const AIME_SINGLE = { // [USAJMO, USAMO]
+  "2016 I":[210.5,220], "2016 II":[200,205], "2015 I":[213,219], "2015 II":[223.5,229],
+  "2014 I":[211,211.5], "2014 II":[211,211.5], "2013 I":[210.5,209], "2013 II":[210.5,209],
+  "2012 I":[204,204.5], "2012 II":[204,204.5], "2011 I":[179,188], "2011 II":[196.5,215.5],
+  "2010 I":[188.5,"208.5"], "2010 II":[188.5,"208.5"],
+};
+const AMC8 = { // [Honor Roll, Distinguished Honor Roll] out of 25
+  2026:[21,24], 2025:[19,23], 2024:[18,22], 2023:[17,21], 2022:[19,22], 2020:[19,22], 2019:[19,22], 2018:[19,22],
+};
+const NOTES = {
+  "AMC 8 2025": "One source lists the Distinguished cutoff as 21.",
+  "AMC 8 2020": "Sources disagree: another lists 18 / 21.",
+  "AMC 8 2019": "Sources disagree: another lists Distinguished as 23.",
+  "AMC 8 2018": "Sources disagree: another lists 15 / 19.",
+  "AIME 2017 I": "Sources disagree on USAMO: another lists 225.5 (12A) / 235 (12B).",
+  "AIME 2017 II": "Sources disagree on USAMO: another lists 221 (12A) / 230.5 (12B).",
+  "AIME 2016 II": "Another source lists the USAMO cutoff as 205.5.",
+  "AIME 2010 I": "USAMO cutoff was 204.5 for students in grade 10 or below.",
+  "AIME 2010 II": "USAMO cutoff was 204.5 for students in grade 10 or below.",
+  "AIME 2026 I": "The MAA released no public USA(J)MO cutoffs for 2026.",
+  "AIME 2026 II": "The MAA released no public USA(J)MO cutoffs for 2026.",
+};
+
+function cutoff(contest, exam) {
+  const [y, s] = exam.split(" ");
+  let rows = [], kind = "";
+  if (contest === "AMC 8") {
+    kind = "Award cutoffs · out of 25";
+    if (AMC8[y]) rows = [["Honor Roll (top 5%)", AMC8[y][0]], ["Distinguished Honor Roll (top 1%)", AMC8[y][1]]];
+  } else if (contest === "AIME") {
+    kind = "USA(J)MO index cutoffs";
+    const a = AIME_SPLIT[exam], b = AIME_SINGLE[exam];
+    if (a) rows = [["USAJMO via AMC 10A", a[0]], ["USAJMO via AMC 10B", a[1]],
+                   ["USAMO via AMC 12A", a[2]], ["USAMO via AMC 12B", a[3]]];
+    else if (b) rows = [["USAJMO", b[0]], ["USAMO", b[1]]];
+  } else {
+    kind = "AIME qualifying score · out of 150";
+    const col = { A:0, B:1 }[s] + (contest === "AMC 12" ? 2 : 0);
+    const v = AMC_AIME_EXTRA[contest][exam] ?? AMC_AIME[y]?.[col];
+    if (v != null) rows = [["AIME cutoff", v]];
+  }
+  let note = NOTES[`${contest} ${exam}`];
+  if (!rows.length && !note)
+    note = contest === "AMC 12" && y < 1983 ? "No cutoff — the AIME didn't exist until 1983."
+         : "No reliable cutoff on record for this year.";
+  return { kind, rows, note };
+}
+
+// AoPS wiki page (handles AJHSME, AHSME, Fall 2021 = C/D)
+function aops(contest, exam) {
+  const [y, s] = exam.split(" ");
+  let page;
+  if (contest === "AMC 8") page = y < 1999 ? `${y}_AJHSME` : `${y}_AMC_8`;
+  else if (contest === "AIME") page = s ? `${y}_AIME_${s}` : `${y}_AIME`;
+  else {
+    const n = contest.slice(4);
+    if (y < 2000) page = `${y}_AHSME`;
+    else if (!s) page = `${y}_AMC_${n}`;
+    else if (s === "C" || s === "D") page = `${y}_Fall_AMC_${n}${s === "C" ? "A" : "B"}`;
+    else page = `${y}_AMC_${n}${s}`;
+  }
+  return "https://artofproblemsolving.com/wiki/index.php/" + page;
+}
+
+// ===== Wheel =====
+const $ = id => document.getElementById(id);
+const canvas = $("wheel"), ctx = canvas.getContext("2d");
+const TAU = Math.PI * 2, mod = (a, m) => ((a % m) + m) % m;
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let contest = null, rot = 0, winner = -1, spinning = false, size = 0, dpr = 1, theme = {};
+
+function readTheme() {
+  const cs = getComputedStyle(document.documentElement), v = k => cs.getPropertyValue(k).trim();
+  theme = { a: v("--slice-a"), b: v("--slice-b"), label: v("--label"), line: v("--line"), bg: v("--bg") };
+}
+
+function resize() {
+  dpr = devicePixelRatio || 1;
+  size = canvas.getBoundingClientRect().width;
+  canvas.width = canvas.height = Math.round(size * dpr);
+  readTheme();
+  draw();
+}
+
+function draw() {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, size, size);
+  const c = size / 2, R = c - 1;
+  const list = contest ? EXAMS[contest] : [], n = list.length || 48, s = TAU / n;
+  const accent = contest ? ACCENT[contest] : theme.line;
+  const font = Math.max(8, Math.min(13, R * s * 0.62));
+
+  ctx.save();
+  ctx.translate(c, c);
+  ctx.rotate(rot);
+  ctx.font = `500 ${font}px Inter, system-ui, sans-serif`;
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  for (let i = 0; i < n; i++) {
+    const a0 = -Math.PI / 2 + i * s;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, a0, a0 + s); ctx.closePath();
+    ctx.fillStyle = i === winner ? accent : i % 2 ? theme.b : theme.a;
+    ctx.fill();
+    if (!list.length) continue;
+    ctx.save();
+    ctx.rotate(a0 + s / 2);
+    ctx.fillStyle = i === winner ? "#ffffff" : theme.label;
+    ctx.fillText(list[i], R - 12, 0);
+    ctx.restore();
+  }
+  ctx.restore();
+
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = theme.line;
+  ctx.beginPath(); ctx.arc(c, c, R, 0, TAU); ctx.stroke();
+}
+
+const under = () => {
+  const n = EXAMS[contest].length;
+  return Math.floor(mod(-rot, TAU) / (TAU / n)) % n;
+};
+
+// ===== Sound =====
+let audio = null, soundOn = true;
+function tick() {
+  if (!soundOn) return;
+  audio ??= new AudioContext();
+  const o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime;
+  o.type = "sine"; o.frequency.value = 1400;
+  g.gain.setValueAtTime(0.04, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
+  o.connect(g).connect(audio.destination); o.start(t); o.stop(t + 0.04);
+}
+$("sound").onclick = e => {
+  soundOn = !soundOn;
+  e.currentTarget.textContent = soundOn ? "Sound on" : "Sound off";
+  e.currentTarget.setAttribute("aria-pressed", soundOn);
+};
+
+// ===== UI =====
+const ticker = $("ticker"), hub = $("hub"), result = $("result");
+const setTicker = (text, idle) => { ticker.textContent = text; ticker.classList.toggle("idle", idle); };
+
+for (const name of Object.keys(EXAMS)) {
+  const b = document.createElement("button");
+  b.textContent = name;
+  b.setAttribute("aria-pressed", "false");
+  b.onclick = () => {
+    contest = name; rot = 0; winner = -1;
+    document.documentElement.style.setProperty("--accent", ACCENT[name]);
+    for (const x of $("contests").children) x.setAttribute("aria-pressed", x === b);
+    hub.disabled = false;
+    result.hidden = true;
+    setTicker(`${EXAMS[name].length} exams`, true);
+    draw();
+  };
+  $("contests").append(b);
+}
+
+function setBusy(busy) {
+  spinning = busy;
+  hub.disabled = busy;
+  for (const x of $("contests").children) x.disabled = busy;
+}
+
+hub.onclick = () => {
+  if (!contest || spinning) return;
+  const list = EXAMS[contest], n = list.length, s = TAU / n;
+  const pick = Math.random() * n | 0;
+  const jitter = (Math.random() - 0.5) * s * 0.6;
+  const start = rot;
+  const end = start - mod(start, TAU) + TAU * 7 + mod(-(pick + 0.5) * s - jitter, TAU);
+  const dur = reduced ? 1000 : 5000, t0 = performance.now();
+  let last = -1, lastTick = 0;
+
+  winner = -1;
+  result.hidden = true;
+  setBusy(true);
+
+  (function frame(now) {
+    const p = Math.min(1, (now - t0) / dur);
+    rot = start + (end - start) * (1 - Math.pow(1 - p, 4)); // ease-out quart
+    draw();
+    const k = under();
+    if (k !== last) {
+      last = k;
+      setTicker(list[k], false);
+      if (now - lastTick > 40) { tick(); lastTick = now; }
+    }
+    if (p < 1) return requestAnimationFrame(frame);
+    finish(list[pick], pick);
+  })(t0);
+};
+
+function finish(exam, i) {
+  winner = i;
+  draw();
+  setBusy(false);
+  setTicker(`${contest} ${exam}`, false);
+  const { kind, rows, note } = cutoff(contest, exam);
+  result.innerHTML = `
+    <p class="eyebrow">${kind}</p>
+    <h2>${contest} ${exam}</h2>
+    ${rows.map(([k, v]) => `<div class="row"><span>${k}</span><b>${v}</b></div>`).join("")}
+    ${note ? `<p class="note">${note}</p>` : ""}
+    <a href="${aops(contest, exam)}" target="_blank" rel="noopener">View problems on AoPS <span aria-hidden="true">↗</span></a>`;
+  result.hidden = false;
+  result.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "nearest" });
+}
+
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { readTheme(); draw(); });
+addEventListener("resize", resize);
+document.fonts.ready.then(resize);
+resize();
+</script>
+</body>
+</html>
