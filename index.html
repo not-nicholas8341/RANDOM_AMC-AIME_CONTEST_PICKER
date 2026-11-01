@@ -9,12 +9,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg:#fafafa; --surface:#ffffff; --text:#09090b; --muted:#71717a; --line:#e4e4e7;
+    --bg:#fafafa; --surface:#ffffff; --text:#09090b; --muted:#71717a; --line:#e4e4e7; --soft:#f4f4f5;
     --slice-a:#f4f4f5; --slice-b:#e9e9ec; --label:#52525b; --accent:#09090b;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg:#09090b; --surface:#111113; --text:#fafafa; --muted:#a1a1aa; --line:#27272a;
+      --bg:#09090b; --surface:#111113; --text:#fafafa; --muted:#a1a1aa; --line:#27272a; --soft:#1c1c1f;
       --slice-a:#141416; --slice-b:#1c1c1f; --label:#a1a1aa; --accent:#fafafa;
     }
   }
@@ -26,88 +26,133 @@
     font-feature-settings:"tnum","cv11"; -webkit-font-smoothing:antialiased;
     display:flex; justify-content:center; padding:56px 16px 64px;
   }
-  main { width:min(520px,100%); display:flex; flex-direction:column; gap:28px; }
+  main { width:min(520px,100%); display:flex; flex-direction:column; gap:20px; }
+  button, select { font:inherit; color:inherit; }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 
+  header { margin-bottom:8px; }
   header h1 { margin:0; font-size:1.5rem; font-weight:600; letter-spacing:-.02em; }
   header p { margin:6px 0 0; color:var(--muted); font-size:.95rem; }
 
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:20px; }
+  .eyebrow { margin:0 0 14px; color:var(--muted); font-size:.75rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em; }
+
+  /* Contest tabs */
   .seg { display:grid; grid-template-columns:repeat(4,1fr); padding:4px; gap:4px;
          background:var(--surface); border:1px solid var(--line); border-radius:12px; }
-  .seg button { font:inherit; font-size:.9rem; font-weight:500; padding:10px 0; border:0; border-radius:8px;
+  .seg button { font-size:.9rem; font-weight:500; padding:10px 0; border:0; border-radius:8px;
                 background:transparent; color:var(--muted); cursor:pointer; transition:background .2s,color .2s; }
   .seg button:hover:not(:disabled) { color:var(--text); }
   .seg button[aria-pressed="true"] { background:var(--text); color:var(--bg); }
-  .seg button:disabled { cursor:not-allowed; }
-  .seg button:focus-visible, #hub:focus-visible, #sound:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 
-  .filters { display:flex; flex-wrap:wrap; align-items:center; gap:10px 18px; margin-top:-14px; font-size:.85rem; color:var(--muted); }
-  .filters label { display:inline-flex; align-items:center; gap:6px; cursor:pointer; }
-  .filters input[type=number] { width:4.6rem; font:inherit; color:var(--text); background:var(--surface);
-                                border:1px solid var(--line); border-radius:8px; padding:6px 8px; }
-  .filters input[type=checkbox] { accent-color:var(--accent); width:16px; height:16px; margin:0; }
-  .filters input:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
-  .progress { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:-8px; font-size:.85rem; color:var(--muted); }
-  .linkbtn { font:inherit; background:none; border:0; padding:0; color:var(--muted); text-decoration:underline; cursor:pointer; }
-  .linkbtn:hover { color:var(--text); }
-  .actions { display:flex; flex-wrap:wrap; align-items:center; gap:16px; margin-top:20px; }
-  .btn { font:inherit; font-size:.9rem; font-weight:500; padding:8px 14px; border-radius:8px; cursor:pointer;
-         border:1px solid var(--line); background:var(--surface); color:var(--text); transition:background .2s,border-color .2s; }
-  .btn:hover { border-color:var(--muted); }
-  .btn[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:#fff; }
+  /* Options */
+  fieldset { border:0; margin:0; padding:0; min-width:0; }
+  .opt { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:12px 0; border-top:1px solid var(--line); }
+  .opt:first-child { border-top:0; padding-top:0; }
+  .opt-text { display:flex; flex-direction:column; gap:2px; }
+  .opt-text b { font-size:.92rem; font-weight:500; }
+  .opt-text small { color:var(--muted); font-size:.8rem; }
+  .years { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:.85rem; }
+  select { appearance:none; background:var(--soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2371717a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E") no-repeat right 10px center;
+           border:1px solid var(--line); border-radius:8px; padding:7px 28px 7px 10px; font-size:.9rem; cursor:pointer; }
+  .switch { appearance:none; flex:none; width:40px; height:24px; margin:0; border-radius:999px; background:var(--line);
+            position:relative; cursor:pointer; transition:background .2s; }
+  .switch::before { content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%;
+                    background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.2); transition:transform .2s; }
+  .switch:checked { background:var(--accent); }
+  .switch:checked::before { transform:translateX(16px); }
+  fieldset:disabled { opacity:.5; }
+  fieldset:disabled * { cursor:not-allowed; }
+  .count { margin:14px 0 0; padding-top:14px; border-top:1px solid var(--line); font-size:.85rem; color:var(--muted); }
+  .count b { color:var(--text); font-weight:600; }
 
-  .stage { display:flex; flex-direction:column; align-items:center; gap:20px; }
-  #ticker { font-size:2.25rem; font-weight:600; letter-spacing:-.03em; height:2.75rem; line-height:2.75rem; }
+  /* Wheel */
+  .stage { display:flex; flex-direction:column; align-items:center; gap:20px; padding:12px 0; }
+  #ticker { font-size:2.25rem; font-weight:600; letter-spacing:-.03em; height:2.75rem; line-height:2.75rem; text-align:center; }
   #ticker.idle { color:var(--muted); font-size:1rem; font-weight:500; letter-spacing:0; }
-
   .wheel { position:relative; width:100%; aspect-ratio:1; }
   #wheel { width:100%; height:100%; display:block; }
-  .pointer { position:absolute; top:-6px; left:50%; translate:-50% 0; width:14px; height:18px;
+  .pointer { position:absolute; top:-6px; left:50%; translate:-50% 0; width:14px; height:18px; z-index:1;
              background:var(--accent); clip-path:polygon(0 0,100% 0,50% 100%); transition:background .3s; }
   #hub { position:absolute; inset:50% auto auto 50%; translate:-50% -50%; width:22%; aspect-ratio:1;
-         border-radius:50%; border:1px solid var(--line); background:var(--surface); color:var(--text);
-         font:inherit; font-size:.95rem; font-weight:600; cursor:pointer;
+         border-radius:50%; border:1px solid var(--line); background:var(--surface);
+         font-size:.95rem; font-weight:600; cursor:pointer;
          box-shadow:0 1px 2px rgba(0,0,0,.06),0 8px 24px rgba(0,0,0,.08); transition:transform .2s; }
   #hub:hover:not(:disabled) { transform:scale(1.04); }
   #hub:disabled { color:var(--muted); cursor:not-allowed; }
 
-  #result { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:24px;
-            animation:in .4s cubic-bezier(.2,.8,.2,1); }
-  #result .eyebrow { margin:0; color:var(--muted); font-size:.8rem; font-weight:500; text-transform:uppercase; letter-spacing:.06em; }
-  #result h2 { margin:4px 0 18px; font-size:1.75rem; font-weight:600; letter-spacing:-.02em; }
+  /* Result */
+  #result { animation:in .4s cubic-bezier(.2,.8,.2,1); }
+  #result h2 { margin:-8px 0 16px; font-size:1.75rem; font-weight:600; letter-spacing:-.02em; }
   .row { display:flex; justify-content:space-between; align-items:baseline; gap:16px; padding:12px 0; border-top:1px solid var(--line); }
   .row span { color:var(--muted); font-size:.9rem; }
   .row b { font-size:1.25rem; font-weight:600; }
-  .note { margin:14px 0 0; color:var(--muted); font-size:.85rem; line-height:1.5; }
-  #result a { display:inline-flex; gap:6px; color:var(--text); font-size:.9rem; font-weight:500;
-              text-decoration:none; border-bottom:1px solid var(--line); padding-bottom:2px; }
-  #result a:hover { border-color:var(--text); }
+  .note { margin:12px 0 0; color:var(--muted); font-size:.85rem; line-height:1.5; }
+  .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:20px; }
+  .btn { flex:1 1 180px; display:inline-flex; justify-content:center; align-items:center; gap:6px;
+         padding:11px 16px; border-radius:10px; font-size:.9rem; font-weight:500; text-decoration:none; cursor:pointer;
+         border:1px solid var(--line); background:var(--surface); color:var(--text); transition:background .2s,border-color .2s,color .2s; }
+  .btn:hover { border-color:var(--muted); }
+  .btn.primary { background:var(--text); border-color:var(--text); color:var(--bg); }
+  .btn.primary[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:#fff; }
   @keyframes in { from { opacity:0; transform:translateY(8px); } }
 
-  footer { display:flex; justify-content:space-between; align-items:center; gap:12px; color:var(--muted); font-size:.75rem; line-height:1.5; }
+  /* Completed */
+  .prog-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px; }
+  .prog-head b { font-size:1.1rem; font-weight:600; }
+  .prog-head span { color:var(--muted); font-size:.85rem; }
+  .bar { height:6px; border-radius:999px; background:var(--soft); overflow:hidden; }
+  .bar i { display:block; height:100%; width:0; background:var(--accent); border-radius:inherit; transition:width .4s ease; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:16px; }
+  .chip { display:inline-flex; align-items:center; gap:6px; padding:5px 8px 5px 10px; border-radius:999px;
+          background:var(--soft); border:1px solid var(--line); font-size:.8rem; cursor:pointer; }
+  .chip span { color:var(--muted); }
+  .chip:hover { border-color:var(--muted); }
+  .chip:hover span { color:var(--text); }
+  .empty { margin:16px 0 0; color:var(--muted); font-size:.85rem; line-height:1.5; }
+  .linkbtn { background:none; border:0; padding:0; margin-top:14px; color:var(--muted); font-size:.8rem; text-decoration:underline; cursor:pointer; }
+  .linkbtn:hover { color:var(--text); }
+
+  footer { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:8px; color:var(--muted); font-size:.75rem; line-height:1.5; }
   footer a { color:inherit; }
-  #sound { flex:none; font:inherit; font-size:.75rem; color:var(--muted); background:none; border:1px solid var(--line);
-           border-radius:999px; padding:6px 12px; cursor:pointer; }
-  @media (prefers-reduced-motion:reduce) { #result { animation:none; } }
+  #sound { flex:none; font-size:.75rem; color:var(--muted); background:none; border:1px solid var(--line); border-radius:999px; padding:6px 12px; cursor:pointer; }
+  @media (prefers-reduced-motion:reduce) { #result { animation:none; } .bar i { transition:none; } }
 </style>
 </head>
 <body>
 <main>
   <header>
     <h1>AMC Roulette</h1>
-    <p>Spin for a random past exam and its cutoff.</p>
+    <p>Spin for a random past exam and see its cutoff.</p>
   </header>
 
   <div class="seg" id="contests" role="group" aria-label="Contest"></div>
 
-  <div class="filters">
-    <label>From <input type="number" id="from" min="1950" max="2026" inputmode="numeric"></label>
-    <label>to <input type="number" id="to" min="1950" max="2026" inputmode="numeric"></label>
-    <label><input type="checkbox" id="known"> Has cutoff</label>
-    <label><input type="checkbox" id="hideDone"> Hide done</label>
-  </div>
+  <section class="card" id="options" hidden>
+    <p class="eyebrow">Options</p>
+    <fieldset id="optFields">
+      <div class="opt">
+        <div class="opt-text"><b>Years</b><small>Only spin exams from this range</small></div>
+        <div class="years">
+          <select id="from" aria-label="From year"></select>
+          <span>to</span>
+          <select id="to" aria-label="To year"></select>
+        </div>
+      </div>
+      <label class="opt">
+        <span class="opt-text"><b>Only exams with a cutoff</b><small>Skip years with no cutoff on record</small></span>
+        <input type="checkbox" class="switch" id="known">
+      </label>
+      <label class="opt">
+        <span class="opt-text"><b>Skip completed exams</b><small>Exams you've marked as completed won't come up</small></span>
+        <input type="checkbox" class="switch" id="skipDone">
+      </label>
+    </fieldset>
+    <p class="count" id="count"></p>
+  </section>
 
   <div class="stage">
-    <div id="ticker" class="idle" aria-live="polite">Choose a contest</div>
+    <div id="ticker" class="idle" aria-live="polite">Choose a contest to start</div>
     <div class="wheel">
       <div class="pointer"></div>
       <canvas id="wheel"></canvas>
@@ -115,17 +160,22 @@
     </div>
   </div>
 
-  <div class="progress" id="progress" hidden>
-    <span id="doneCount"></span>
-    <button class="linkbtn" id="reset">Reset</button>
-  </div>
+  <section class="card" id="result" hidden></section>
 
-  <section id="result" hidden></section>
+  <section class="card" id="progress" hidden>
+    <p class="eyebrow">Completed</p>
+    <div class="prog-head"><b id="progNum"></b><span id="progPct"></span></div>
+    <div class="bar"><i id="progBar"></i></div>
+    <div class="chips" id="chips"></div>
+    <p class="empty" id="progEmpty">After you take an exam, press <b>Mark as completed</b> on its result. It'll show up here, and you can skip it on future spins.</p>
+    <button class="linkbtn" id="clearAll">Clear all</button>
+  </section>
 
   <footer>
     <span>Cutoffs from <a href="https://ivyleaguecenter.org/2016/01/23/1487/">Ivy League Center</a>,
       <a href="https://momentumlearning.org/amc-cutoff-scores/">Momentum Learning</a>,
-      <a href="https://areteem.org/blog/amc-8-awards-and-cutoffs/">Areteem</a>. Official: MAA.</span>
+      <a href="https://areteem.org/blog/amc-8-awards-and-cutoffs/">Areteem</a>. Official: MAA.
+      Progress is saved in this browser.</span>
     <button id="sound" aria-pressed="true">Sound on</button>
   </footer>
 </main>
@@ -141,6 +191,7 @@ const EXAMS = {
   "AIME":   [...pairs(2026, 2000, ["I", "II"]), ...range(1999, 1983)],
 };
 const ACCENT = { "AMC 8":"#10b981", "AMC 10":"#3b82f6", "AMC 12":"#a855f7", "AIME":"#f59e0b" };
+const yearOf = e => +e.split(" ")[0];
 
 // ===== Cutoffs =====
 // AIME qualifying score on the AMC 10/12 (out of 150): [10A, 10B, 12A, 12B]
@@ -232,16 +283,38 @@ function aops(contest, exam) {
   return "https://artofproblemsolving.com/wiki/index.php/" + page;
 }
 
-// ===== Wheel =====
+// ===== Saved state (this browser only) =====
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+const key = (c, e) => `${c}|${e}`;
+const done = new Set(store.get("done", []));
+const saveDone = () => store.set("done", [...done]);
+const prefs = { known: false, skipDone: true, ...store.get("prefs", {}) };
+
+// ===== State =====
 const $ = id => document.getElementById(id);
-const canvas = $("wheel"), ctx = canvas.getContext("2d");
 const TAU = Math.PI * 2, mod = (a, m) => ((a % m) + m) % m;
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-let contest = null, rot = 0, winner = -1, spinning = false, size = 0, dpr = 1, theme = {};
+let contest = null, pool = [], yearFrom = 0, yearTo = 0;
+let rot = 0, winner = -1, spinning = false, current = null; // current = exam shown in result card
+
+function buildPool() {
+  const lo = Math.min(yearFrom, yearTo), hi = Math.max(yearFrom, yearTo);
+  pool = EXAMS[contest].filter(e =>
+    yearOf(e) >= lo && yearOf(e) <= hi
+    && (!prefs.known || cutoff(contest, e).rows.length)
+    && (!prefs.skipDone || !done.has(key(contest, e))));
+}
+
+// ===== Wheel =====
+const canvas = $("wheel"), ctx = canvas.getContext("2d");
+let size = 0, dpr = 1, theme = {};
 
 function readTheme() {
   const cs = getComputedStyle(document.documentElement), v = k => cs.getPropertyValue(k).trim();
-  theme = { a: v("--slice-a"), b: v("--slice-b"), label: v("--label"), line: v("--line"), bg: v("--bg") };
+  theme = { a: v("--slice-a"), b: v("--slice-b"), label: v("--label"), line: v("--line") };
 }
 
 function resize() {
@@ -272,13 +345,14 @@ function draw() {
     ctx.fillStyle = i === winner ? accent : i % 2 ? theme.b : theme.a;
     ctx.fill();
     if (!list.length) continue;
-    ctx.save();
-    ctx.rotate(a0 + s / 2);
     const isDone = done.has(key(contest, list[i]));
-    ctx.fillStyle = i === winner ? "#ffffff" : theme.label;
+    const mid = a0 + s / 2, flip = Math.cos(mid + rot) < 0; // keep left-half labels upright
+    ctx.save();
+    ctx.rotate(flip ? mid + Math.PI : mid);
+    ctx.textAlign = flip ? "left" : "right";
     ctx.globalAlpha = isDone && i !== winner ? 0.4 : 1;
-    ctx.fillText(isDone ? `✓ ${list[i]}` : list[i], R - 12, 0);
-    ctx.globalAlpha = 1;
+    ctx.fillStyle = i === winner ? "#ffffff" : theme.label;
+    ctx.fillText(isDone ? `✓ ${list[i]}` : list[i], flip ? -(R - 12) : R - 12, 0);
     ctx.restore();
   }
   ctx.restore();
@@ -289,45 +363,6 @@ function draw() {
 }
 
 const under = () => Math.floor(mod(-rot, TAU) / (TAU / pool.length)) % pool.length;
-
-// ===== Done tracker + filters (saved in this browser) =====
-const store = {
-  get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-};
-const key = (c, e) => `${c}|${e}`;
-const done = new Set(store.get("done", []));
-const saveDone = () => store.set("done", [...done]);
-const filters = { from: 1950, to: 2026, known: false, hideDone: true, ...store.get("filters", {}) };
-const clampYear = (v, d) => { const n = parseInt(v, 10); return Number.isFinite(n) ? Math.min(2026, Math.max(1950, n)) : d; };
-let pool = [];
-
-function buildPool() {
-  const lo = Math.min(filters.from, filters.to), hi = Math.max(filters.from, filters.to);
-  pool = EXAMS[contest].filter(e => {
-    const y = +e.split(" ")[0];
-    return y >= lo && y <= hi
-      && (!filters.known || cutoff(contest, e).rows.length)
-      && (!filters.hideDone || !done.has(key(contest, e)));
-  });
-}
-
-function refresh() {
-  if (!contest) return;
-  buildPool();
-  rot = 0; winner = -1;
-  hub.disabled = !pool.length;
-  setTicker(pool.length ? `${pool.length} exam${pool.length > 1 ? "s" : ""}` : "No exams match your filters", true);
-  updateProgress();
-  draw();
-}
-
-function updateProgress() {
-  const all = EXAMS[contest], n = all.filter(e => done.has(key(contest, e))).length;
-  $("doneCount").textContent = `${n} of ${all.length} ${contest} exams done`;
-  $("reset").hidden = !n;
-  $("progress").hidden = false;
-}
 
 // ===== Sound =====
 let audio = null, soundOn = true;
@@ -347,8 +382,50 @@ $("sound").onclick = e => {
 
 // ===== UI =====
 const ticker = $("ticker"), hub = $("hub"), result = $("result");
+const fromEl = $("from"), toEl = $("to"), knownEl = $("known"), skipEl = $("skipDone");
 const setTicker = (text, idle) => { ticker.textContent = text; ticker.classList.toggle("idle", idle); };
 
+// Rebuild the wheel after any option change
+function refresh() {
+  buildPool();
+  rot = 0; winner = -1;
+  hub.disabled = !pool.length;
+  const total = EXAMS[contest].length;
+  $("count").innerHTML = `<b>${pool.length}</b> of ${total} exams on the wheel`;
+  setTicker(pool.length ? "Press Spin" : "No exams match your options", true);
+  renderProgress();
+  draw();
+}
+
+function renderProgress() {
+  const all = EXAMS[contest], list = all.filter(e => done.has(key(contest, e)));
+  $("progNum").textContent = `${list.length} / ${all.length}`;
+  $("progPct").textContent = `${Math.round(list.length / all.length * 100)}% of ${contest}`;
+  $("progBar").style.width = `${list.length / all.length * 100}%`;
+  $("progEmpty").hidden = list.length > 0;
+  $("clearAll").hidden = list.length === 0;
+  $("chips").innerHTML = list.map(e =>
+    `<button class="chip" data-exam="${e}" title="Remove from completed">${e} <span aria-hidden="true">×</span></button>`).join("");
+  $("progress").hidden = false;
+}
+
+function setDone(exam, on) {
+  on ? done.add(key(contest, exam)) : done.delete(key(contest, exam));
+  saveDone();
+  renderProgress();
+  paintDoneBtn();
+  draw();
+}
+
+function paintDoneBtn() {
+  const btn = $("doneBtn");
+  if (!btn || !current) return;
+  const on = done.has(key(contest, current));
+  btn.textContent = on ? "✓ Completed" : "Mark as completed";
+  btn.setAttribute("aria-pressed", on);
+}
+
+// Contest tabs
 for (const name of Object.keys(EXAMS)) {
   const b = document.createElement("button");
   b.textContent = name;
@@ -357,43 +434,52 @@ for (const name of Object.keys(EXAMS)) {
     contest = name;
     document.documentElement.style.setProperty("--accent", ACCENT[name]);
     for (const x of $("contests").children) x.setAttribute("aria-pressed", x === b);
-    result.hidden = true;
+    const years = [...new Set(EXAMS[name].map(yearOf))].sort((a, b) => a - b);
+    const opts = years.map(y => `<option value="${y}">${y}</option>`).join("");
+    fromEl.innerHTML = toEl.innerHTML = opts;
+    yearFrom = fromEl.value = years[0];
+    yearTo = toEl.value = years.at(-1);
+    $("options").hidden = false;
+    result.hidden = true; current = null;
     refresh();
   };
   $("contests").append(b);
 }
 
-const fromEl = $("from"), toEl = $("to"), knownEl = $("known"), hideEl = $("hideDone");
-fromEl.value = filters.from; toEl.value = filters.to; knownEl.checked = filters.known; hideEl.checked = filters.hideDone;
-for (const el of [fromEl, toEl, knownEl, hideEl]) el.addEventListener("change", () => {
-  filters.from = clampYear(fromEl.value, 1950);
-  filters.to = clampYear(toEl.value, 2026);
-  filters.known = knownEl.checked;
-  filters.hideDone = hideEl.checked;
-  fromEl.value = filters.from; toEl.value = filters.to;
-  store.set("filters", filters);
-  result.hidden = true;
-  refresh();
-});
+// Options
+knownEl.checked = prefs.known;
+skipEl.checked = prefs.skipDone;
+fromEl.onchange = () => { yearFrom = +fromEl.value; refresh(); };
+toEl.onchange = () => { yearTo = +toEl.value; refresh(); };
+knownEl.onchange = () => { prefs.known = knownEl.checked; store.set("prefs", prefs); refresh(); };
+skipEl.onchange = () => { prefs.skipDone = skipEl.checked; store.set("prefs", prefs); refresh(); };
 
-$("reset").onclick = () => {
-  if (!confirm(`Clear all ${contest} exams marked done?`)) return;
+// Completed list
+$("chips").onclick = e => {
+  const chip = e.target.closest(".chip");
+  if (chip && !spinning) setDone(chip.dataset.exam, false);
+};
+$("clearAll").onclick = () => {
+  if (!confirm(`Clear all completed ${contest} exams?`)) return;
   for (const e of EXAMS[contest]) done.delete(key(contest, e));
   saveDone();
-  result.hidden = true;
+  paintDoneBtn();
   refresh();
 };
 
 function setBusy(busy) {
   spinning = busy;
   hub.disabled = busy;
-  for (const x of [...$("contests").children, fromEl, toEl, knownEl, hideEl, $("reset")]) x.disabled = busy;
+  $("optFields").disabled = busy;
+  for (const x of $("contests").children) x.disabled = busy;
 }
 
+// Spin
 hub.onclick = () => {
   if (!contest || spinning) return;
-  buildPool(); // picks up exams marked done since the last spin
+  buildPool(); // drop exams marked completed since the last spin
   if (!pool.length) return refresh();
+  $("count").innerHTML = `<b>${pool.length}</b> of ${EXAMS[contest].length} exams on the wheel`;
   const list = pool, n = list.length, s = TAU / n;
   const pick = Math.random() * n | 0;
   const jitter = (Math.random() - 0.5) * s * 0.6;
@@ -403,7 +489,7 @@ hub.onclick = () => {
   let last = -1, lastTick = 0;
 
   winner = -1;
-  result.hidden = true;
+  result.hidden = true; current = null;
   setBusy(true);
 
   (function frame(now) {
@@ -423,6 +509,7 @@ hub.onclick = () => {
 
 function finish(exam, i) {
   winner = i;
+  current = exam;
   draw();
   setBusy(false);
   setTicker(`${contest} ${exam}`, false);
@@ -433,20 +520,11 @@ function finish(exam, i) {
     ${rows.map(([k, v]) => `<div class="row"><span>${k}</span><b>${v}</b></div>`).join("")}
     ${note ? `<p class="note">${note}</p>` : ""}
     <div class="actions">
-      <button class="btn" id="doneBtn"></button>
-      <a href="${aops(contest, exam)}" target="_blank" rel="noopener">View problems on AoPS <span aria-hidden="true">↗</span></a>
+      <a class="btn" href="${aops(contest, exam)}" target="_blank" rel="noopener">View problems <span aria-hidden="true">↗</span></a>
+      <button class="btn primary" id="doneBtn"></button>
     </div>`;
-  const k = key(contest, exam), btn = $("doneBtn");
-  const paint = () => {
-    const on = done.has(k);
-    btn.textContent = on ? "✓ Done" : "Mark as done";
-    btn.setAttribute("aria-pressed", on);
-  };
-  btn.onclick = () => {
-    done.has(k) ? done.delete(k) : done.add(k);
-    saveDone(); paint(); updateProgress(); draw();
-  };
-  paint();
+  $("doneBtn").onclick = () => setDone(exam, !done.has(key(contest, exam)));
+  paintDoneBtn();
   result.hidden = false;
   result.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "nearest" });
 }
