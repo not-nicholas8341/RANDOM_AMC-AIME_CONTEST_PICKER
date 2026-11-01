@@ -19,6 +19,7 @@
     }
   }
   * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
   body {
     margin:0; min-height:100vh; background:var(--bg); color:var(--text);
     font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -38,6 +39,21 @@
   .seg button[aria-pressed="true"] { background:var(--text); color:var(--bg); }
   .seg button:disabled { cursor:not-allowed; }
   .seg button:focus-visible, #hub:focus-visible, #sound:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  .filters { display:flex; flex-wrap:wrap; align-items:center; gap:10px 18px; margin-top:-14px; font-size:.85rem; color:var(--muted); }
+  .filters label { display:inline-flex; align-items:center; gap:6px; cursor:pointer; }
+  .filters input[type=number] { width:4.6rem; font:inherit; color:var(--text); background:var(--surface);
+                                border:1px solid var(--line); border-radius:8px; padding:6px 8px; }
+  .filters input[type=checkbox] { accent-color:var(--accent); width:16px; height:16px; margin:0; }
+  .filters input:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+  .progress { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:-8px; font-size:.85rem; color:var(--muted); }
+  .linkbtn { font:inherit; background:none; border:0; padding:0; color:var(--muted); text-decoration:underline; cursor:pointer; }
+  .linkbtn:hover { color:var(--text); }
+  .actions { display:flex; flex-wrap:wrap; align-items:center; gap:16px; margin-top:20px; }
+  .btn { font:inherit; font-size:.9rem; font-weight:500; padding:8px 14px; border-radius:8px; cursor:pointer;
+         border:1px solid var(--line); background:var(--surface); color:var(--text); transition:background .2s,border-color .2s; }
+  .btn:hover { border-color:var(--muted); }
+  .btn[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:#fff; }
 
   .stage { display:flex; flex-direction:column; align-items:center; gap:20px; }
   #ticker { font-size:2.25rem; font-weight:600; letter-spacing:-.03em; height:2.75rem; line-height:2.75rem; }
@@ -62,7 +78,7 @@
   .row span { color:var(--muted); font-size:.9rem; }
   .row b { font-size:1.25rem; font-weight:600; }
   .note { margin:14px 0 0; color:var(--muted); font-size:.85rem; line-height:1.5; }
-  #result a { display:inline-flex; gap:6px; margin-top:18px; color:var(--text); font-size:.9rem; font-weight:500;
+  #result a { display:inline-flex; gap:6px; color:var(--text); font-size:.9rem; font-weight:500;
               text-decoration:none; border-bottom:1px solid var(--line); padding-bottom:2px; }
   #result a:hover { border-color:var(--text); }
   @keyframes in { from { opacity:0; transform:translateY(8px); } }
@@ -83,6 +99,13 @@
 
   <div class="seg" id="contests" role="group" aria-label="Contest"></div>
 
+  <div class="filters">
+    <label>From <input type="number" id="from" min="1950" max="2026" inputmode="numeric"></label>
+    <label>to <input type="number" id="to" min="1950" max="2026" inputmode="numeric"></label>
+    <label><input type="checkbox" id="known"> Has cutoff</label>
+    <label><input type="checkbox" id="hideDone"> Hide done</label>
+  </div>
+
   <div class="stage">
     <div id="ticker" class="idle" aria-live="polite">Choose a contest</div>
     <div class="wheel">
@@ -90,6 +113,11 @@
       <canvas id="wheel"></canvas>
       <button id="hub" disabled>Spin</button>
     </div>
+  </div>
+
+  <div class="progress" id="progress" hidden>
+    <span id="doneCount"></span>
+    <button class="linkbtn" id="reset">Reset</button>
   </div>
 
   <section id="result" hidden></section>
@@ -228,7 +256,7 @@ function draw() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, size, size);
   const c = size / 2, R = c - 1;
-  const list = contest ? EXAMS[contest] : [], n = list.length || 48, s = TAU / n;
+  const list = contest ? pool : [], n = list.length || 48, s = TAU / n;
   const accent = contest ? ACCENT[contest] : theme.line;
   const font = Math.max(8, Math.min(13, R * s * 0.62));
 
@@ -246,8 +274,11 @@ function draw() {
     if (!list.length) continue;
     ctx.save();
     ctx.rotate(a0 + s / 2);
+    const isDone = done.has(key(contest, list[i]));
     ctx.fillStyle = i === winner ? "#ffffff" : theme.label;
-    ctx.fillText(list[i], R - 12, 0);
+    ctx.globalAlpha = isDone && i !== winner ? 0.4 : 1;
+    ctx.fillText(isDone ? `✓ ${list[i]}` : list[i], R - 12, 0);
+    ctx.globalAlpha = 1;
     ctx.restore();
   }
   ctx.restore();
@@ -257,10 +288,46 @@ function draw() {
   ctx.beginPath(); ctx.arc(c, c, R, 0, TAU); ctx.stroke();
 }
 
-const under = () => {
-  const n = EXAMS[contest].length;
-  return Math.floor(mod(-rot, TAU) / (TAU / n)) % n;
+const under = () => Math.floor(mod(-rot, TAU) / (TAU / pool.length)) % pool.length;
+
+// ===== Done tracker + filters (saved in this browser) =====
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
+const key = (c, e) => `${c}|${e}`;
+const done = new Set(store.get("done", []));
+const saveDone = () => store.set("done", [...done]);
+const filters = { from: 1950, to: 2026, known: false, hideDone: true, ...store.get("filters", {}) };
+const clampYear = (v, d) => { const n = parseInt(v, 10); return Number.isFinite(n) ? Math.min(2026, Math.max(1950, n)) : d; };
+let pool = [];
+
+function buildPool() {
+  const lo = Math.min(filters.from, filters.to), hi = Math.max(filters.from, filters.to);
+  pool = EXAMS[contest].filter(e => {
+    const y = +e.split(" ")[0];
+    return y >= lo && y <= hi
+      && (!filters.known || cutoff(contest, e).rows.length)
+      && (!filters.hideDone || !done.has(key(contest, e)));
+  });
+}
+
+function refresh() {
+  if (!contest) return;
+  buildPool();
+  rot = 0; winner = -1;
+  hub.disabled = !pool.length;
+  setTicker(pool.length ? `${pool.length} exam${pool.length > 1 ? "s" : ""}` : "No exams match your filters", true);
+  updateProgress();
+  draw();
+}
+
+function updateProgress() {
+  const all = EXAMS[contest], n = all.filter(e => done.has(key(contest, e))).length;
+  $("doneCount").textContent = `${n} of ${all.length} ${contest} exams done`;
+  $("reset").hidden = !n;
+  $("progress").hidden = false;
+}
 
 // ===== Sound =====
 let audio = null, soundOn = true;
@@ -287,26 +354,47 @@ for (const name of Object.keys(EXAMS)) {
   b.textContent = name;
   b.setAttribute("aria-pressed", "false");
   b.onclick = () => {
-    contest = name; rot = 0; winner = -1;
+    contest = name;
     document.documentElement.style.setProperty("--accent", ACCENT[name]);
     for (const x of $("contests").children) x.setAttribute("aria-pressed", x === b);
-    hub.disabled = false;
     result.hidden = true;
-    setTicker(`${EXAMS[name].length} exams`, true);
-    draw();
+    refresh();
   };
   $("contests").append(b);
 }
 
+const fromEl = $("from"), toEl = $("to"), knownEl = $("known"), hideEl = $("hideDone");
+fromEl.value = filters.from; toEl.value = filters.to; knownEl.checked = filters.known; hideEl.checked = filters.hideDone;
+for (const el of [fromEl, toEl, knownEl, hideEl]) el.addEventListener("change", () => {
+  filters.from = clampYear(fromEl.value, 1950);
+  filters.to = clampYear(toEl.value, 2026);
+  filters.known = knownEl.checked;
+  filters.hideDone = hideEl.checked;
+  fromEl.value = filters.from; toEl.value = filters.to;
+  store.set("filters", filters);
+  result.hidden = true;
+  refresh();
+});
+
+$("reset").onclick = () => {
+  if (!confirm(`Clear all ${contest} exams marked done?`)) return;
+  for (const e of EXAMS[contest]) done.delete(key(contest, e));
+  saveDone();
+  result.hidden = true;
+  refresh();
+};
+
 function setBusy(busy) {
   spinning = busy;
   hub.disabled = busy;
-  for (const x of $("contests").children) x.disabled = busy;
+  for (const x of [...$("contests").children, fromEl, toEl, knownEl, hideEl, $("reset")]) x.disabled = busy;
 }
 
 hub.onclick = () => {
   if (!contest || spinning) return;
-  const list = EXAMS[contest], n = list.length, s = TAU / n;
+  buildPool(); // picks up exams marked done since the last spin
+  if (!pool.length) return refresh();
+  const list = pool, n = list.length, s = TAU / n;
   const pick = Math.random() * n | 0;
   const jitter = (Math.random() - 0.5) * s * 0.6;
   const start = rot;
@@ -344,7 +432,21 @@ function finish(exam, i) {
     <h2>${contest} ${exam}</h2>
     ${rows.map(([k, v]) => `<div class="row"><span>${k}</span><b>${v}</b></div>`).join("")}
     ${note ? `<p class="note">${note}</p>` : ""}
-    <a href="${aops(contest, exam)}" target="_blank" rel="noopener">View problems on AoPS <span aria-hidden="true">↗</span></a>`;
+    <div class="actions">
+      <button class="btn" id="doneBtn"></button>
+      <a href="${aops(contest, exam)}" target="_blank" rel="noopener">View problems on AoPS <span aria-hidden="true">↗</span></a>
+    </div>`;
+  const k = key(contest, exam), btn = $("doneBtn");
+  const paint = () => {
+    const on = done.has(k);
+    btn.textContent = on ? "✓ Done" : "Mark as done";
+    btn.setAttribute("aria-pressed", on);
+  };
+  btn.onclick = () => {
+    done.has(k) ? done.delete(k) : done.add(k);
+    saveDone(); paint(); updateProgress(); draw();
+  };
+  paint();
   result.hidden = false;
   result.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "nearest" });
 }
